@@ -98,13 +98,13 @@
         name: kubelet={{ k8s_version }}-00
         state: present
         update_cache: true
-        allow_change_held_packages: true
+        # allow_change_held_packages: true
 
     - name: install kubeadm
       apt:
         name: kubeadm={{ k8s_version }}-00
         state: present
-        allow_change_held_packages: true
+        # allow_change_held_packages: true
 
     - name: prevent packages from being upgraded
       dpkg_selections:
@@ -146,7 +146,7 @@
         name: kubectl={{ k8s_version }}-00
         state: present
         force: yes
-        allow_change_held_packages: true
+        # allow_change_held_packages: true
 
     - name: prevent packages from being upgraded
       dpkg_selections:

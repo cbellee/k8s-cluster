@@ -3,7 +3,7 @@ ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
 USERNAME = 'ubuntu'
 DEVICE = 'enp3s0'
 BRIDGE = 'virbr0'
-DISKSIZE = '30G'
+DISKSIZE = '60G'
 DISKPATH = '/media/STORAGE/VM'
 IMAGE = 'generic/ubuntu2204'
 MACADDR = 'RANDOM'
@@ -15,13 +15,12 @@ GATEWAYIP = '192.168.122.1'
 NETMASK = '255.255.255.0'
 
 nodes = {
-  'mycluster-cp1' => [2, 2048, '192.168.122.191'],
-  'mycluster-cp2' => [2, 2048, '192.168.122.192'],
-  'mycluster-cp3' => [2, 2048, '192.168.122.193'],
-  'mycluster-w1' => [1, 2048, '192.168.122.194'],
-  'mycluster-w2' => [1, 2048, '192.168.122.195'],
-  'mycluster-w3' => [1, 2048, '192.168.122.196'],
-#  'mycluster-w4' => [1, 2048, '192.168.122.197'],
+  'mycluster-cp1' => [2, 2048, '192.168.88.180'],
+  'mycluster-cp2' => [2, 2048, '192.168.88.181'],
+  'mycluster-cp3' => [2, 2048, '192.168.88.182'],
+  'mycluster-wk1' => [1, 2048, '192.168.88.190'],
+  'mycluster-wk2' => [1, 2048, '192.168.88.191'],
+  'mycluster-wk3' => [1, 2048, '192.168.88.192'],
 }
 
 Vagrant.configure("2") do |config|
@@ -63,8 +62,8 @@ Vagrant.configure("2") do |config|
         :keep => true
 
       node.vm.provider :libvirt do |libvirt|
-        libvirt.host_device_exclude_prefixes = ['docker', 'macvtap', 'vnet']
-        libvirt.management_network_keep = true
+        #libvirt.host_device_exclude_prefixes = ['docker', 'macvtap', 'vnet']
+        #libvirt.management_network_keep = true
         libvirt.driver = 'kvm'
         libvirt.default_prefix = ''
         libvirt.host = ''
@@ -77,7 +76,7 @@ Vagrant.configure("2") do |config|
         libvirt.disk_bus = 'virtio'
         libvirt.disk_driver :cache => 'writeback'
         libvirt.autostart = true
-        libvirt.storage_pool_name = "VM"
+        libvirt.storage_pool_name = 'default'
         libvirt.storage_pool_path = DISKPATH
       end
     end
