@@ -1,0 +1,1 @@
+sudo systemctl restart systemd-logind; sudo systemctl restart display-manager; loginctl terminate-user chris

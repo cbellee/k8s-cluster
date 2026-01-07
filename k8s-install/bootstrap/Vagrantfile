@@ -1,0 +1,87 @@
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+
+USERNAME = 'ubuntu'
+DEVICE = 'enp3s0'
+BRIDGE = 'br0'
+DISKSIZE = '100G'
+DISKPATH = '/mnt/vmm'
+IMAGE = 'bento/ubuntu-24.04'
+MACADDR = 'RANDOM'
+AUTOCONF = 'off'
+SERVERIP = ''
+DNS0IP = '192.168.88.1'
+DNS1IP = ''
+GATEWAYIP = '192.168.88.1'
+NETMASK = '255.255.255.0'
+KVM_DRIVER = 'kvm'
+MGMT_NETWORK_CIDR = '192.168.121.0/24'
+MGMT_NETWORK_NAME = 'vagrant_mgmt_network'
+
+nodes = {
+  'k8s-cp-01' => [2, 2048, '192.168.88.50'],
+  'k8s-cp-02' => [2, 2048, '192.168.88.51'],
+  'k8s-cp-03' => [2, 2048, '192.168.88.52'],
+  'k8s-wk-01' => [2, 4096, '192.168.88.60'],
+  'k8s-wk-02' => [2, 4096, '192.168.88.61'],
+  'k8s-wk-03' => [2, 4096, '192.168.88.62'],
+}
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "#{IMAGE}"
+  config.vm.host_name = "#{USERNAME}"
+
+  config.vm.provision 'file', source: '~/.ssh/id_rsa.pub', destination: '/tmp/id_rsa.pub'
+  config.vm.provision 'file', source: './hosts', destination: '/tmp/hosts'
+
+  config.vm.provision 'shell', privileged: true, inline: <<-SCRIPT
+    sudo swapoff -a
+    sudo sed -i '/swap/d' /etc/fstab
+    sudo echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ubuntu
+    sudo chmod 440 /etc/sudoers.d/ubuntu
+    sudo apt-get update
+    useradd -m #{USERNAME} --groups sudo
+    su -c "printf 'cd /home/#{USERNAME}\nsudo su #{USERNAME}' >> .bash_profile" -s /bin/sh vagrant
+    sudo -u #{USERNAME} mkdir -p /home/#{USERNAME}/.ssh
+    sudo -u #{USERNAME} cat /tmp/id_rsa.pub >> /home/#{USERNAME}/.ssh/authorized_keys
+    sudo chsh -s /bin/bash #{USERNAME}
+    sudo cp /tmp/hosts /etc/hosts
+  SCRIPT
+  
+  nodes.each do | (name, cfg) |
+    cpus, memory, ip = cfg
+    
+    config.vm.define name do |node|
+      node.vm.hostname = name
+      node.ssh.insert_key = false
+      
+      node.vm.network :public_network,
+        :dev => BRIDGE,
+        :mode => 'bridge',
+        :type => 'bridge',
+        :ip => ip,
+        :netmask => NETMASK,
+        :dns => DNS0IP,
+        :gateway => GATEWAYIP,
+        :keep => true
+
+      node.vm.provider :libvirt do |libvirt|
+        libvirt.driver = KVM_DRIVER
+        libvirt.management_network_name = MGMT_NETWORK_NAME
+        libvirt.management_network_address = MGMT_NETWORK_CIDR
+        libvirt.default_prefix = ''
+        libvirt.host = ''
+        libvirt.cpu_mode = 'host-passthrough'
+        libvirt.graphics_type = 'vnc'
+        libvirt.video_type = 'virtio'
+        libvirt.nic_model_type = 'virtio'
+        libvirt.cpus = cpus
+        libvirt.memory = memory
+        libvirt.disk_bus = 'virtio'
+        libvirt.disk_driver :cache => 'writeback'
+        libvirt.autostart = true
+        libvirt.storage_pool_name = 'default'
+        libvirt.storage_pool_path = DISKPATH
+      end
+    end
+  end
+end
