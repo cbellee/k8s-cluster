@@ -1,3 +1,6 @@
+# install metrics server
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
 # install openebs
 helm repo add openebs https://openebs.github.io/openebs
 helm repo update
@@ -46,7 +49,7 @@ helm upgrade harbor-internal \
     --set externalURL=https://registry.internal.bellee.net \
     --create-namespace .
 
-# expose promoetheus externally to the cluster (uses Cilium LoadBalancer + iBGP)
+# expose harbor externally to the cluster (uses Cilium LoadBalancer + iBGP)
 #kubectl expose service harbor-internal-portal --namespace harbor-internal --type=LoadBalancer --target-port=80 --name=harbor-internal-portal-ext  
 #kubectl expose service harbor-internal-registry --namespace harbor-internal --type=LoadBalancer --target-port=5000 --name=harbor-internal-registry-ext  
 
