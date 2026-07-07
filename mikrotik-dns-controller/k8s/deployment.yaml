@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mikrotik-credentials
+  namespace: mikrotik-dns-controller
+type: Opaque
+stringData:
+  # Configure these with your MikroTik router details
+  host: "192.168.88.1"
+  username: "<your username>"
+  password: "<your password>"
+  insecure: "true"  # Set to "false" if using valid SSL certificate
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mikrotik-dns-controller
+  namespace: mikrotik-dns-controller
+  labels:
+    app: mikrotik-dns-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mikrotik-dns-controller
+  template:
+    metadata:
+      labels:
+        app: mikrotik-dns-controller
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      serviceAccountName: mikrotik-dns-controller
+      containers:
+      - name: controller
+        # Use your own image registry/name if building yourself
+        image: ghcr.io/cbellee/mikrotik-dns-controller:latest
+        imagePullPolicy: Always
+        env:
+        - name: MIKROTIK_HOST
+          valueFrom:
+            secretKeyRef:
+              name: mikrotik-credentials
+              key: host
+        - name: MIKROTIK_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mikrotik-credentials
+              key: username
+        - name: MIKROTIK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mikrotik-credentials
+              key: password
+        - name: MIKROTIK_INSECURE
+          valueFrom:
+            secretKeyRef:
+              name: mikrotik-credentials
+              key: insecure
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars and adjust for your environment.
+
+# Optional absolute path to a qcow2 image used as the base disk for all nodes.
+# Leave empty to auto-discover a local Bento Ubuntu 26.04 libvirt image under ~/.vagrant.d/boxes.
+# For exact parity, you can still point this at the same Ubuntu 26.04 image family you use for Vagrant/libvirt.
+base_image_path = ""
+
+bridge       = "br0"
+storage_pool = "default"
+
+cp_endpoint_alias = "kube-cluster-01"
+primary_control_plane = "kube-cp-01"
+
+gateway_ip = "192.168.89.1"
+dns0_ip    = "192.168.89.1"
+
+# Toggle if you do not want Terraform to overwrite ~/.kube/config on the VM host.
+export_kubeconfig_to_home = true

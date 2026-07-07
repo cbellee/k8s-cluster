@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: colourserver-green
+  namespace: default
+  labels:
+    bgp: public
+  annotations:
+    # Enable MikroTik DNS management for this service
+    dns.mikrotik/enabled: "true"
+    # Hostname to create in MikroTik DNS
+    dns.mikrotik/hostname: "colourserver-green.internal.bellee.net"
+    # Optional: Custom comment for the DNS entry
+    dns.mikrotik/comment: "Colour server green application"
+spec:
+  type: LoadBalancer
+  selector:
+    app: colourserver-green
+  ports:
+  - port: 80
+    targetPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: colourserver-blue
+  namespace: default
+  labels:
+    bgp: public
+  annotations:
+    dns.mikrotik/enabled: "true"
+    dns.mikrotik/hostname: "colourserver-blue.internal.bellee.net"
+    dns.mikrotik/comment: "Colour server blue application"
+spec:
+  type: LoadBalancer
+  selector:
+    app: colourserver-blue
+  ports:
+  - port: 80
+    targetPort: 80
+
+---
+# Service WITHOUT DNS management (no annotations)
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-service-no-dns
+  namespace: default
+  labels:
+    app: example
+spec:
+  type: LoadBalancer
+  selector:
+    app: example
+  ports:
+  - port: 80
+    targetPort: 80

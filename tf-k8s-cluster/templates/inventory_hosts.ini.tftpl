@@ -1,0 +1,51 @@
+[primary_control_plane]
+${primary_control_plane} ansible_host=${control_planes[primary_control_plane].ip}
+
+[control_plane]
+%{ for name, cfg in control_planes ~}
+${name} ansible_host=${cfg.ip}
+%{ endfor ~}
+
+[workers]
+%{ for name, cfg in workers ~}
+${name} ansible_host=${cfg.ip}
+%{ endfor ~}
+
+[all:vars]
+ansible_user=${ansible_user}
+ansible_python_interpreter=/usr/bin/python3
+
+cp_endpoint_alias=${cp_endpoint_alias}
+cp_endpoint_node=${cp_endpoint_node}
+cp_endpoint_ip=${control_planes[cp_endpoint_node].ip}
+
+k8s_version=${k8s_version}
+k8s_channel=${k8s_channel}
+k8s_repo=${k8s_repo}
+k8s_url_apt_key=${k8s_url_apt_key}
+
+pod_network_cidr=${pod_network_cidr}
+service_cidr=${service_cidr}
+cri_socket=${cri_socket}
+
+cilium_version=${cilium_version}
+cilium_cluster_pool_ipv4_cidr=${cilium_cluster_pool_ipv4_cidr}
+cilium_reconcile_existing=${cilium_reconcile_existing}
+
+cilium_bgp_enabled=${cilium_bgp_enabled}
+cilium_bgp_reconcile_existing=${cilium_bgp_reconcile_existing}
+cilium_bgp_local_asn=${cilium_bgp_local_asn}
+cilium_bgp_peer_asn=${cilium_bgp_peer_asn}
+cilium_bgp_peer_address=${cilium_bgp_peer_address}
+
+cilium_bgp_cluster_config_name=${cilium_bgp_cluster_config_name}
+cilium_bgp_instance_name=${cilium_bgp_instance_name}
+cilium_bgp_peer_name=${cilium_bgp_peer_name}
+cilium_bgp_peer_config_name=${cilium_bgp_peer_config_name}
+
+cilium_bgp_advertisement_name=${cilium_bgp_advertisement_name}
+cilium_bgp_advertisement_label_key=${cilium_bgp_advertisement_label_key}
+cilium_bgp_advertisement_label_value=${cilium_bgp_advertisement_label_value}
+
+cilium_lb_ip_pool_name=${cilium_lb_ip_pool_name}
+cilium_lb_ip_pool_cidr=${cilium_lb_ip_pool_cidr}

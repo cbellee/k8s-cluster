@@ -1,1 +1,28 @@
 .vagrant/
+terraform.tfvars
+.env
+
+# Terraform sensitive files
+terraform.tfstate*
+*.tfplan
+.terraform/
+.terraform.lock.hcl
+
+# Kubernetes configs with credentials
+**/kubeconfig
+kubeconfig.bak
+
+# Local development
+.env.local
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+k8s-install/backups/

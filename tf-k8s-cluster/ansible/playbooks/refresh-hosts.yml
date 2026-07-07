@@ -1,0 +1,15 @@
+- hosts: all
+  become: true
+  tasks:
+    - name: Refresh cluster hosts block with current endpoint mapping
+      blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} K8S_CLUSTER_HOSTS"
+        block: |
+          {{ cp_endpoint_ip }} {{ cp_endpoint_alias }} {{ cp_endpoint_node }}
+          {% for host in groups['control_plane'] %}
+          {{ hostvars[host].ansible_host }} {{ host }}
+          {% endfor %}
+          {% for host in groups['workers'] %}
+          {{ hostvars[host].ansible_host }} {{ host }}
+          {% endfor %}

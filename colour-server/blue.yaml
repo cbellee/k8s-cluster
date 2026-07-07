@@ -1,13 +1,17 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: colourserver-green
+  name: colourserver-blue
   labels:
     bgp: public
+  annotations:
+    dns.mikrotik/enabled: "true"
+    dns.mikrotik/hostname: "colourserver-blue.internal.bellee.net"
+    dns.mikrotik/comment: "Colour server blue application"
 spec:
   type: LoadBalancer
   selector:
-    app: colourserver-green
+    app: colourserver-blue
   ports:
   - port: 80
     targetPort: 80
@@ -17,19 +21,19 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: colourserver-green-deployment
+  name: colourserver-blue-deployment
   namespace: default
   labels:
-    app: colourserver-green
+    app: colourserver-blue
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: colourserver-green
+      app: colourserver-blue
   template:
     metadata:
       labels:
-        app: colourserver-green
+        app: colourserver-blue
     spec:
       containers:
       - name: colourserver
@@ -43,4 +47,4 @@ spec:
             memory: 256Mi
         env:
           - name: COLOUR
-            value: green
+            value: blue

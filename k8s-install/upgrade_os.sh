@@ -1,10 +1,6 @@
-sudo apt install ubuntu-release-upgrader-core
+#!/usr/bin/env bash
+set -euo pipefail
 
-grep 'lts' /etc/update-manager/release-upgrades
-sudo vi /etc/update-manager/release-upgrades
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-sudo ufw allow 1022/tcp comment 'Open port ssh TCP/1022 as failsafe for upgrades'
-sudo ufw status
-
-sudo apt update && sudo apt upgrade -y
-sudo do-release-upgrade -d
+exec "${SCRIPT_DIR}/upgrade_to_ubuntu_2604_lts.sh" "$@"

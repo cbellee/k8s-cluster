@@ -1,0 +1,5 @@
+127.0.0.1 localhost
+
+%{ for name, cfg in nodes ~}
+${cfg.ip} ${name}%{ if name == cp_endpoint_node } ${cp_endpoint_alias}%{ endif }
+%{ endfor ~}

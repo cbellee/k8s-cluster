@@ -61,7 +61,9 @@
       apt:
         pkg:
           - apt-transport-https
-          - net-tools
+          - ca-certificates
+          - curl
+          - gnupg
 
     - name: set hostname
       hostname:
@@ -81,15 +83,6 @@
       when: hostvars[item].ansible_host is defined
       with_items: "{{ groups.all }}"
 
-    - name: add k8s apt key
-      apt_key:
-        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
-        state: present
-      register: apt_res
-      retries: 10
-      delay: 10
-      until: apt_res is success
-    
     - name: Get Kubernetes package key
       shell: curl -fsSL {{ k8s_url_apt_key }} | gpg --dearmor -o {{ k8s_gpgpath }}
       args:
@@ -109,6 +102,7 @@
         name: ipvsadm
         state: present
         force: yes
+      ignore_errors: yes
 
     - name: install kubelet
       apt:
@@ -188,7 +182,10 @@
         create: true
 
     - name: set crictl endpoint
-      shell: crictl config --set runtime-endpoint={{ cri_socket }} --set image-endpoint={{ cri_socket }}
+      shell: |
+        if command -v crictl >/dev/null 2>&1; then
+          crictl config --set runtime-endpoint={{ cri_socket }} --set image-endpoint={{ cri_socket }}
+        fi
 
 - import_playbook: cri-cri-o.yml
   when: cri_socket == 'unix:///var/run/crio/crio.sock'

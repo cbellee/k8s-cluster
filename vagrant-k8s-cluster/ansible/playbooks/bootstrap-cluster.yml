@@ -1,0 +1,194 @@
+- hosts: primary_control_plane
+  become: true
+  tasks:
+    - name: Initialize first control plane
+      shell: |
+        kubeadm init \
+          --control-plane-endpoint={{ cp_endpoint_alias }} \
+          --kubernetes-version=v{{ k8s_version }} \
+          --node-name={{ inventory_hostname }} \
+          --pod-network-cidr={{ pod_network_cidr }} \
+          --service-cidr={{ service_cidr }} \
+          --cri-socket={{ cri_socket }} \
+          --upload-certs \
+          --v=5 > /root/kubeadm_init.txt
+      args:
+        creates: /etc/kubernetes/admin.conf
+
+    - name: Configure kubeconfig for ubuntu user
+      block:
+        - name: Ensure .kube exists
+          file:
+            path: /home/ubuntu/.kube
+            state: directory
+            owner: ubuntu
+            group: ubuntu
+            mode: '0755'
+
+        - name: Copy admin.conf
+          copy:
+            src: /etc/kubernetes/admin.conf
+            dest: /home/ubuntu/.kube/config
+            owner: ubuntu
+            group: ubuntu
+            mode: '0600'
+            remote_src: true
+
+    - name: Install Helm
+      shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Copy canonical Cilium values file
+      copy:
+        src: ../cilium/cilium-values.yaml
+        dest: /home/ubuntu/cilium-values.yaml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Check whether Cilium release already exists
+      become_user: ubuntu
+      shell: helm status cilium -n kube-system >/dev/null 2>&1
+      register: cilium_release_status
+      changed_when: false
+      failed_when: false
+
+    - name: Set Cilium release presence fact
+      set_fact:
+        cilium_release_installed: "{{ cilium_release_status.rc == 0 }}"
+
+    - name: Install or reconcile Cilium CNI with cluster-specific defaults
+      become_user: ubuntu
+      shell: |
+        helm repo add cilium https://helm.cilium.io
+        helm repo update
+        helm upgrade --install cilium cilium/cilium \
+          --version {{ cilium_version }} \
+          --namespace kube-system \
+          --values /home/ubuntu/cilium-values.yaml \
+          --set-string ipam.operator.clusterPoolIPv4PodCIDRList[0]={{ cilium_cluster_pool_ipv4_cidr }} \
+          --wait
+      args:
+        chdir: /home/ubuntu
+      when: (not cilium_release_installed) or (cilium_reconcile_existing | default(false) | bool)
+
+    - name: Wait for Cilium daemonset rollout
+      become_user: ubuntu
+      shell: kubectl -n kube-system rollout status ds/cilium --timeout=10m
+
+    - name: Ensure Cilium BGP manifest directory exists
+      file:
+        path: /home/ubuntu/cilium-bgp
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+      when:
+        - cilium_bgp_enabled | default(false) | bool
+        - (not cilium_release_installed) or (cilium_bgp_reconcile_existing | default(false) | bool)
+
+    - name: Render Cilium BGP manifests
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      loop:
+        - src: ../cilium/bgp/cilium-bgp-peer-config.yaml.j2
+          dest: /home/ubuntu/cilium-bgp/cilium-bgp-peer-config.yaml
+        - src: ../cilium/bgp/cilium-ip-pool.yaml.j2
+          dest: /home/ubuntu/cilium-bgp/cilium-ip-pool.yaml
+        - src: ../cilium/bgp/cilium-bgp-advertisement.yaml.j2
+          dest: /home/ubuntu/cilium-bgp/cilium-bgp-advertisement.yaml
+        - src: ../cilium/bgp/cilium-bgp-cluster-config.yaml.j2
+          dest: /home/ubuntu/cilium-bgp/cilium-bgp-cluster-config.yaml
+      when:
+        - cilium_bgp_enabled | default(false) | bool
+        - (not cilium_release_installed) or (cilium_bgp_reconcile_existing | default(false) | bool)
+
+    - name: Apply Cilium BGP manifests
+      become_user: ubuntu
+      shell: kubectl apply -f {{ item }}
+      loop:
+        - /home/ubuntu/cilium-bgp/cilium-bgp-peer-config.yaml
+        - /home/ubuntu/cilium-bgp/cilium-ip-pool.yaml
+        - /home/ubuntu/cilium-bgp/cilium-bgp-advertisement.yaml
+        - /home/ubuntu/cilium-bgp/cilium-bgp-cluster-config.yaml
+      when:
+        - cilium_bgp_enabled | default(false) | bool
+        - (not cilium_release_installed) or (cilium_bgp_reconcile_existing | default(false) | bool)
+
+    - name: Get certificate key
+      shell: kubeadm init phase upload-certs --upload-certs | tail -n 1
+      register: certificate_key_raw
+
+    - name: Set certificate key fact
+      set_fact:
+        certificate_key: "{{ certificate_key_raw.stdout }}"
+
+    - name: Get worker join command
+      shell: kubeadm token create --print-join-command
+      register: worker_join_command_raw
+
+    - name: Set worker join command fact
+      set_fact:
+        worker_join_command: "{{ worker_join_command_raw.stdout }}"
+
+- hosts: control_plane
+  become: true
+  vars:
+    primary_cp_host: "{{ groups['primary_control_plane'][0] }}"
+  tasks:
+    - name: Join additional control planes
+      shell: |
+        {{ hostvars[primary_cp_host].worker_join_command }} \
+          --control-plane \
+          --certificate-key {{ hostvars[primary_cp_host].certificate_key }} \
+          --node-name={{ inventory_hostname }} \
+          --cri-socket={{ cri_socket }} \
+          --v=5 > /root/kubeadm_cp_join.txt
+      when: inventory_hostname != primary_cp_host
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+
+    - name: Configure kubeconfig for ubuntu on control planes
+      block:
+        - name: Ensure .kube exists
+          file:
+            path: /home/ubuntu/.kube
+            state: directory
+            owner: ubuntu
+            group: ubuntu
+            mode: '0755'
+
+        - name: Copy admin.conf
+          copy:
+            src: /etc/kubernetes/admin.conf
+            dest: /home/ubuntu/.kube/config
+            owner: ubuntu
+            group: ubuntu
+            mode: '0600'
+            remote_src: true
+      when: inventory_hostname != primary_cp_host
+
+- hosts: workers
+  become: true
+  vars:
+    primary_cp_host: "{{ groups['primary_control_plane'][0] }}"
+  tasks:
+    - name: Join workers to cluster
+      shell: |
+        {{ hostvars[primary_cp_host].worker_join_command }} \
+          --node-name={{ inventory_hostname }} \
+          --cri-socket={{ cri_socket }} \
+          --v=5 > /root/kubeadm_worker_join.txt
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+
+    - name: Restart kubelet after join
+      systemd:
+        name: kubelet
+        state: restarted

@@ -1,0 +1,14 @@
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: {{ cilium_bgp_peer_config_name }}
+spec:
+  gracefulRestart:
+    enabled: true
+    restartTimeSeconds: 15
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          {{ cilium_bgp_advertisement_label_key }}: {{ cilium_bgp_advertisement_label_value }}

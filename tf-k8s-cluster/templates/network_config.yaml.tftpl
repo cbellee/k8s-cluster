@@ -1,0 +1,15 @@
+version: 2
+ethernets:
+  nic0:
+    match:
+      macaddress: ${mac}
+    dhcp4: false
+    dhcp6: false
+    addresses:
+      - ${ip}/${prefix}
+    routes:
+      - to: default
+        via: ${gateway}
+    nameservers:
+      addresses:
+        - ${dns}

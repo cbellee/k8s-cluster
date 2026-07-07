@@ -1,0 +1,35 @@
+#cloud-config
+users:
+  - default
+  - name: ${ansible_user}
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+ssh_pwauth: false
+
+disable_root: true
+
+write_files:
+  - path: /etc/apt/sources.list.d/ubuntu.sources
+    permissions: "0644"
+    content: |
+      Types: deb
+      URIs: http://us.archive.ubuntu.com/ubuntu/
+      Suites: resolute resolute-updates resolute-backports
+      Components: main restricted universe multiverse
+      Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+  - path: /etc/hosts
+    permissions: "0644"
+    content: |
+%{ for line in split("\n", trimspace(hosts_content)) ~}
+      ${line}
+%{ endfor ~}
+
+runcmd:
+  - swapoff -a || true
+  - sed -i '/swap/d' /etc/fstab
+  - sed -i '/resolute-security/d' /etc/apt/sources.list || true
+  - apt-get update || true

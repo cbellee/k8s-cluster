@@ -1,0 +1,26 @@
+router_hosturl  = "https://192.168.88.1"
+router_username = "admin"
+router_password = "REPLACE_ME"
+
+# Set to false after you install/validate the RouterOS cert chain.
+router_insecure = true
+
+bgp_instance_name      = "bgp-1"
+bgp_instance_as        = "64512"
+bgp_instance_router_id = "192.168.88.1"
+bgp_template_name      = "k8s-cluster-template"
+
+workers = {
+	kube-wk-01 = { address = "192.168.89.20", asn = "64512" }
+	kube-wk-02 = { address = "192.168.89.21", asn = "64512" }
+	kube-wk-03 = { address = "192.168.89.22", asn = "64512" }
+}
+
+# Keep false if only workers should peer with the router.
+manage_control_plane_peers = false
+
+control_planes = {
+	kube-cp-01 = { address = "192.168.89.10", asn = "64512" }
+	kube-cp-02 = { address = "192.168.89.11", asn = "64512" }
+	kube-cp-03 = { address = "192.168.89.12", asn = "64512" }
+}

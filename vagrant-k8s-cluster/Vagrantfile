@@ -1,0 +1,124 @@
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+
+# Minimal dotenv parser to keep Vagrant self-contained.
+def load_env(path)
+  return {} unless File.exist?(path)
+
+  env = {}
+  File.readlines(path).each do |line|
+    next if line.strip.empty? || line.strip.start_with?('#')
+    key, value = line.split('=', 2)
+    next if key.nil? || value.nil?
+    env[key.strip] = value.strip.gsub(/^['\"]|['\"]$/, '')
+  end
+  env
+end
+
+env = load_env(File.join(__dir__, '.env'))
+
+def env_or(env, key, default)
+  env.fetch(key, default)
+end
+
+username = 'ubuntu'
+image = env_or(env, 'IMAGE', 'bento/ubuntu-26.04')
+bridge = env_or(env, 'BRIDGE', 'br0')
+netmask = env_or(env, 'NETMASK', '255.255.255.0')
+gateway_ip = env_or(env, 'GATEWAYIP', '192.168.89.1')
+dns0_ip = env_or(env, 'DNS0IP', '192.168.89.1')
+diskpath = env_or(env, 'DISKPATH', '/mnt/vmm')
+kvm_driver = env_or(env, 'KVM_DRIVER', 'kvm')
+mgmt_network_name = env_or(env, 'MGMT_NETWORK_NAME', 'vagrant_mgmt_network')
+mgmt_network_cidr = env_or(env, 'MGMT_NETWORK_CIDR', '192.168.121.0/24')
+
+nodes = {
+  'kube-cp-01' => [env_or(env, 'CP01_CPUS', '2').to_i, env_or(env, 'CP01_MEM', '4096').to_i, env_or(env, 'CP01_IP', '192.168.89.10')],
+  'kube-cp-02' => [env_or(env, 'CP02_CPUS', '2').to_i, env_or(env, 'CP02_MEM', '4096').to_i, env_or(env, 'CP02_IP', '192.168.89.11')],
+  'kube-cp-03' => [env_or(env, 'CP03_CPUS', '2').to_i, env_or(env, 'CP03_MEM', '4096').to_i, env_or(env, 'CP03_IP', '192.168.89.12')],
+  'kube-wk-01' => [env_or(env, 'WK01_CPUS', '2').to_i, env_or(env, 'WK01_MEM', '4096').to_i, env_or(env, 'WK01_IP', '192.168.89.20')],
+  'kube-wk-02' => [env_or(env, 'WK02_CPUS', '2').to_i, env_or(env, 'WK02_MEM', '4096').to_i, env_or(env, 'WK02_IP', '192.168.89.21')],
+  'kube-wk-03' => [env_or(env, 'WK03_CPUS', '2').to_i, env_or(env, 'WK03_MEM', '4096').to_i, env_or(env, 'WK03_IP', '192.168.89.22')]
+}
+
+Vagrant.configure('2') do |config|
+  config.vm.box = image
+
+  config.vm.provision 'file', source: '~/.ssh/id_rsa.pub', destination: '/tmp/id_rsa.pub'
+  config.vm.provision 'file', source: './hosts', destination: '/tmp/hosts'
+
+  config.vm.provision 'shell', privileged: true, inline: <<-SCRIPT
+    set -euxo pipefail
+    swapoff -a || true
+    sed -i '/swap/d' /etc/fstab
+
+    echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ubuntu
+    chmod 440 /etc/sudoers.d/ubuntu
+
+    # Ubuntu 26.04 bootstrap guard: remove unavailable security pocket when needed.
+    cat <<'EOF' > /etc/apt/sources.list.d/ubuntu.sources
+Types: deb
+URIs: http://us.archive.ubuntu.com/ubuntu/
+Suites: resolute resolute-updates resolute-backports
+Components: main restricted universe multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+EOF
+    sed -i '/resolute-security/d' /etc/apt/sources.list 2>/dev/null || true
+
+    apt-get update || true
+
+    if id -u ubuntu >/dev/null 2>&1; then
+      usermod -aG sudo ubuntu
+    else
+      useradd -m ubuntu --groups sudo
+    fi
+
+    mkdir -p /home/ubuntu/.ssh
+    cat /tmp/id_rsa.pub >> /home/ubuntu/.ssh/authorized_keys
+    chown -R ubuntu:ubuntu /home/ubuntu/.ssh
+    chmod 700 /home/ubuntu/.ssh
+    chmod 600 /home/ubuntu/.ssh/authorized_keys
+    chsh -s /bin/bash ubuntu
+
+    cp /tmp/hosts /etc/hosts
+  SCRIPT
+
+  nodes.each do |name, cfg|
+    cpus, memory, ip = cfg
+
+    config.vm.define name do |node|
+      node.vm.hostname = name
+      node.ssh.insert_key = false
+
+      node.vm.network :public_network,
+        :dev => bridge,
+        :mode => 'bridge',
+        :type => 'bridge',
+        :ip => ip,
+        :netmask => netmask,
+        :dns => dns0_ip,
+        :gateway => gateway_ip,
+        :keep => true
+
+      node.vm.provider :libvirt do |libvirt|
+        libvirt.driver = kvm_driver
+        libvirt.machine_type = 'pc-i440fx-plucky'
+        libvirt.loader = '/usr/share/OVMF/OVMF_CODE_4M.fd'
+        libvirt.nvram = '/usr/share/OVMF/OVMF_VARS_4M.fd'
+        libvirt.management_network_name = mgmt_network_name
+        libvirt.management_network_address = mgmt_network_cidr
+        libvirt.default_prefix = ''
+        libvirt.cpu_mode = 'host-passthrough'
+        libvirt.graphics_type = 'vnc'
+        libvirt.video_type = 'virtio'
+        libvirt.nic_model_type = 'virtio'
+        libvirt.cpus = cpus
+        libvirt.memory = memory
+        libvirt.disk_bus = 'virtio'
+        libvirt.disk_driver :cache => 'writeback'
+        libvirt.autostart = true
+        libvirt.storage_pool_name = 'default'
+        libvirt.storage_pool_path = diskpath
+      end
+    end
+  end
+end
