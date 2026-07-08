@@ -253,3 +253,52 @@ variable "autostart" {
   type        = bool
   default     = true
 }
+
+variable "flux_bootstrap_enabled" {
+  description = "Whether Terraform should run Flux bootstrap after cluster bootstrap and kubeconfig export."
+  type        = bool
+  default     = false
+}
+
+variable "flux_repo_name" {
+  description = "GitHub repository name used by flux bootstrap."
+  type        = string
+  default     = "k8s-cluster"
+}
+
+variable "flux_branch" {
+  description = "Git branch used by flux bootstrap."
+  type        = string
+  default     = "main"
+}
+
+variable "flux_cluster_path" {
+  description = "Repository path containing the cluster entrypoint used by flux bootstrap."
+  type        = string
+  default     = "gitops/clusters/kube-cluster-01"
+}
+
+variable "flux_github_owner" {
+  description = "Optional GitHub owner (user or org) for flux bootstrap. If empty, Terraform expects GITHUB_OWNER from the environment."
+  type        = string
+  default     = ""
+}
+
+variable "flux_git_url" {
+  description = "Optional Git repository URL for Flux bootstrap. If empty, Terraform builds a GitHub URL from flux_github_owner and flux_repo_name."
+  type        = string
+  default     = ""
+}
+
+variable "flux_git_http_username" {
+  description = "HTTP username for Git authentication used by the Flux provider."
+  type        = string
+  default     = "git"
+}
+
+variable "flux_github_token" {
+  description = "GitHub token (PAT) used by the Flux provider for Git authentication. Prefer setting via TF_VAR_flux_github_token."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

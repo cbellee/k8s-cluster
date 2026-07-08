@@ -72,6 +72,17 @@ Set at least:
 - `bridge`
 - `storage_pool`
 
+Optional Flux bootstrap controls:
+
+- `flux_bootstrap_enabled`
+- `flux_repo_name`
+- `flux_branch`
+- `flux_cluster_path`
+- `flux_github_owner`
+- `flux_git_url`
+- `flux_git_http_username`
+- `flux_github_token`
+
 `base_image_path` is optional:
 
 - If set, Terraform clones that qcow2 image for all nodes.
@@ -166,6 +177,26 @@ terraform init
 terraform apply
 ```
 
+### Optional: bootstrap Flux automatically during `terraform apply`
+
+If you want Terraform to bootstrap Flux after cluster bootstrap and kubeconfig export:
+
+1. Set `flux_bootstrap_enabled = true` in [terraform.tfvars](./terraform.tfvars).
+2. Set either:
+	- `flux_github_owner` (and let Terraform build `https://github.com/<owner>/<repo>.git`), or
+	- `flux_git_url` directly.
+3. Export token input for Terraform in the same shell that runs Terraform:
+
+```bash
+export TF_VAR_flux_github_token=<your-token>
+```
+
+Optional if needed for custom Git auth username:
+
+```bash
+export TF_VAR_flux_git_http_username=<username>
+```
+
 What happens during `apply`:
 
 1. Terraform creates six libvirt VMs with static bridged IPs.
@@ -174,6 +205,7 @@ What happens during `apply`:
 4. Terraform runs `ansible/playbooks/bootstrap-cluster.yml`.
 5. Terraform exports a kubeconfig to [artifacts/kubeconfig](./artifacts/kubeconfig).
 6. By default, Terraform also updates `~/.kube/config` on the VM host.
+7. If `flux_bootstrap_enabled=true`, Terraform runs Flux bootstrap declaratively using the `fluxcd/flux` provider (`flux_bootstrap_git`) against the exported kubeconfig.
 
 ## Verify
 

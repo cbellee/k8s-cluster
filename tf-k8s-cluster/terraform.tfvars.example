@@ -16,3 +16,18 @@ dns0_ip    = "192.168.89.1"
 
 # Toggle if you do not want Terraform to overwrite ~/.kube/config on the VM host.
 export_kubeconfig_to_home = true
+
+# Optional: automatically bootstrap Flux after Terraform has exported kubeconfig.
+# Uses the Terraform Flux provider (no local flux CLI required).
+# Provide TF_VAR_flux_github_token in the shell running terraform apply.
+flux_bootstrap_enabled = false
+flux_repo_name         = "k8s-cluster"
+flux_branch            = "main"
+flux_cluster_path      = "gitops/clusters/kube-cluster-01"
+flux_github_owner      = ""
+flux_git_url           = ""
+flux_git_http_username = "git"
+
+# Leave empty in tfvars and set token through environment instead:
+#   export TF_VAR_flux_github_token=<your-token>
+flux_github_token      = ""

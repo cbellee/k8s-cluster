@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/external"
       version = "~> 2.3"
     }
+    flux = {
+      source  = "fluxcd/flux"
+      version = "~> 1.9"
+    }
     libvirt = {
       source  = "dmacvicar/libvirt"
       version = "~> 0.8"
