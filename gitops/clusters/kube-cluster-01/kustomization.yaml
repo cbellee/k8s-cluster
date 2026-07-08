@@ -2,7 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Cluster entrypoint for this environment.
-# Keep this file thin and compose platform/apps layers.
+# This path is reconciled by flux-system and should define Flux CRs only.
 resources:
-  - ../../platform
-  - ../../apps
+  - ./flux-system
+  - ./infrastructure.yaml
+  - ./apps.yaml
