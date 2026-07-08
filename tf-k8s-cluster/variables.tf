@@ -236,9 +236,9 @@ variable "workers" {
     mac    = string
   }))
   default = {
-    kube-wk-01 = { ip = "192.168.89.20", vcpu = 2, memory = 4096, mac = "52:54:00:89:20:01" }
-    kube-wk-02 = { ip = "192.168.89.21", vcpu = 2, memory = 4096, mac = "52:54:00:89:20:02" }
-    kube-wk-03 = { ip = "192.168.89.22", vcpu = 2, memory = 4096, mac = "52:54:00:89:20:03" }
+    kube-wk-01 = { ip = "192.168.89.20", vcpu = 2, memory = 3072, mac = "52:54:00:89:20:01" }
+    kube-wk-02 = { ip = "192.168.89.21", vcpu = 2, memory = 3072, mac = "52:54:00:89:20:02" }
+    kube-wk-03 = { ip = "192.168.89.22", vcpu = 2, memory = 3072, mac = "52:54:00:89:20:03" }
   }
 }
 

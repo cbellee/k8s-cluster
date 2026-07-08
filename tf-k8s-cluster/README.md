@@ -85,6 +85,79 @@ The default node names and IPs match the current working cluster shape:
 - API endpoint alias `kube-cluster-01`
 - Router/BGP peer `192.168.89.1`
 
+## Updating SSH access on existing VMs
+
+For new VM builds, cloud-init injects the key from `ssh_public_key_path`.
+If VMs already exist, changing `ssh_public_key_path` in Terraform does not reliably update user keys on running instances.
+
+Set the key path in [terraform.tfvars](./terraform.tfvars):
+
+```hcl
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+```
+
+Then push the current host key to all existing nodes with Ansible:
+
+```bash
+cd /home/chris/repos/k8s-cluster/tf-k8s-cluster
+ansible all -i ./ansible/inventory/hosts.ini -u ubuntu -b -m authorized_key -a "user=ubuntu state=present key='$(cat ~/.ssh/id_rsa.pub)'"
+```
+
+### If you get "REMOTE HOST IDENTIFICATION HAS CHANGED"
+
+This is expected after node rebuilds. Clear stale host keys and re-scan current keys:
+
+```bash
+for ip in 192.168.89.10 192.168.89.11 192.168.89.12 192.168.89.20 192.168.89.21 192.168.89.22; do
+	ssh-keygen -f ~/.ssh/known_hosts -R "$ip"
+	ssh-keyscan -H "$ip" >> ~/.ssh/known_hosts
+done
+```
+
+Validate connectivity:
+
+```bash
+ansible all -i ./ansible/inventory/hosts.ini -u ubuntu -b -m ping
+```
+
+Re-run the `authorized_key` command after connectivity is restored.
+
+### Helper script
+
+You can run the same recovery and key-push flow with:
+
+```bash
+cd /home/chris/repos/k8s-cluster/tf-k8s-cluster
+./scripts/refresh_ssh_access.sh
+```
+
+Optional custom key path:
+
+```bash
+./scripts/refresh_ssh_access.sh ~/.ssh/your_other_key.pub
+```
+
+## Post-apply recovery helper
+
+If a VM memory resize leaves worker nodes shut off, run:
+
+```bash
+cd /home/chris/repos/k8s-cluster/tf-k8s-cluster
+./scripts/post_apply_recover.sh
+```
+
+This script:
+
+- Starts any shutoff cluster domains (`kube-cp-*`, `kube-wk-*`)
+- Waits until all Kubernetes nodes are `Ready`
+- Prints final `kubectl get nodes -o wide`
+
+Optional tuning:
+
+```bash
+MAX_ATTEMPTS=60 SLEEP_SECONDS=5 ./scripts/post_apply_recover.sh
+```
+
 ## Build the cluster
 
 ```bash

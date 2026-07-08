@@ -9,6 +9,6 @@ spec:
       peers:
         - name: peer-to-mikrotik
           peerASN: 64512
-          peerAddress: 192.168.88.1
+          peerAddress: 192.168.89.1
           peerConfigRef:
             name: cilium-bgp-peer
