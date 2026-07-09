@@ -26,7 +26,7 @@ spec:
         annotations:
           bgp: public
           dns.mikrotik/enabled: "true"
-          dns.mikrotik/hostname: "photos.bellee.net"
+          dns.mikrotik/hostname: "photo.internal.bellee.net"
           dns.mikrotik/comment: "Ingress for photo stack"
       ingressClassResource:
         name: nginx

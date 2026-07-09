@@ -52,15 +52,15 @@ metadata:
   name: photo-spa
   namespace: photo
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/cluster-issuer: internal-ca
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - photos.bellee.net
+        - photo.internal.bellee.net
       secretName: photo-spa-tls
   rules:
-    - host: photos.bellee.net
+    - host: photo.internal.bellee.net
       http:
         paths:
           - path: /
