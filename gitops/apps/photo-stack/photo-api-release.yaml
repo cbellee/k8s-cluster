@@ -15,10 +15,10 @@ spec:
       interval: 1m
   install:
     remediation:
-      retries: 3
+      retries: 0
   upgrade:
     remediation:
-      retries: 3
+      retries: 0
   values:
     photoApi:
       replicaCount: 1
@@ -63,6 +63,9 @@ spec:
               - op: replace
                 path: /spec/volumeClaimTemplates
                 value: []
+              - op: replace
+                path: /spec/template/spec/containers/0/env/0/value
+                value: ""
           - target:
               kind: StatefulSet
               name: rabbitmq
