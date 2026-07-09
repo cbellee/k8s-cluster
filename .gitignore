@@ -5,6 +5,7 @@ terraform.tfvars
 # Terraform sensitive files
 terraform.tfstate*
 *.tfplan
+tfplan
 .terraform/
 .terraform.lock.hcl
 
