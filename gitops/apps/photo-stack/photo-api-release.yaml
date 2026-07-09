@@ -26,10 +26,14 @@ spec:
         type: LoadBalancer
     resizeApi:
       replicaCount: 1
+      dapr:
+        enabled: false
     blobemu:
       service:
         type: ClusterIP
     otelCollector:
+      enabled: false
+    daprComponent:
       enabled: false
   postRenderers:
     - kustomize:
