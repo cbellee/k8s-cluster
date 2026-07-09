@@ -51,3 +51,27 @@ spec:
                   dns.mikrotik/enabled: "true"
                   dns.mikrotik/hostname: "photo-api.internal.bellee.net"
                   dns.mikrotik/comment: "Photo API service"
+          - target:
+              kind: StatefulSet
+              name: blobemu
+            patch: |
+              - op: add
+                path: /spec/template/spec/volumes
+                value:
+                  - name: blobemu-data
+                    emptyDir: {}
+              - op: replace
+                path: /spec/volumeClaimTemplates
+                value: []
+          - target:
+              kind: StatefulSet
+              name: rabbitmq
+            patch: |
+              - op: add
+                path: /spec/template/spec/volumes
+                value:
+                  - name: rabbitmq-data
+                    emptyDir: {}
+              - op: replace
+                path: /spec/volumeClaimTemplates
+                value: []
