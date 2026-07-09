@@ -23,8 +23,9 @@ spec:
     controller:
       service:
         type: LoadBalancer
-        annotations:
+        labels:
           bgp: public
+        annotations:
           dns.mikrotik/enabled: "true"
           dns.mikrotik/hostname: "photo.internal.bellee.net"
           dns.mikrotik/comment: "Ingress for photo stack"
