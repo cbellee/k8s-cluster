@@ -30,6 +30,9 @@ spec:
         bgp: public
       annotations:
         io.cilium/lb-ipam-ips: "172.16.0.10"
+        dns.mikrotik/enabled: "true"
+        dns.mikrotik/hostname: "grafana.internal.bellee.net"
+        dns.mikrotik/comment: "Grafana monitoring dashboard"
     persistence:
       enabled: false
     testFramework:
