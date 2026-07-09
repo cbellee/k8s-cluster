@@ -1,0 +1,49 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: photo-api
+  namespace: photo
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: ./helm/photo-api
+      sourceRef:
+        kind: GitRepository
+        name: photo-api
+        namespace: flux-system
+      interval: 1m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    photoApi:
+      replicaCount: 1
+      service:
+        type: LoadBalancer
+    resizeApi:
+      replicaCount: 1
+    blobemu:
+      service:
+        type: ClusterIP
+    otelCollector:
+      enabled: false
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Service
+              name: photo-api
+            patch: |
+              - op: add
+                path: /metadata/labels/bgp
+                value: public
+              - op: add
+                path: /metadata/annotations
+                value:
+                  dns.mikrotik/enabled: "true"
+                  dns.mikrotik/hostname: "photo-api.internal.bellee.net"
+                  dns.mikrotik/comment: "Photo API service"

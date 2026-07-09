@@ -3,5 +3,6 @@ kind: Kustomization
 
 # Workload/application layer.
 resources:
+  - ./photo-stack
   - ./colour-server/blue.yaml
   - ./colour-server/green.yaml

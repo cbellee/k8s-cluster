@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photo-spa
+  namespace: photo
+  labels:
+    app: photo-spa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: photo-spa
+  template:
+    metadata:
+      labels:
+        app: photo-spa
+    spec:
+      containers:
+        - name: photo-spa
+          image: ghcr.io/cbellee/photo-spa:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: photo-spa
+  namespace: photo
+  labels:
+    app: photo-spa
+    bgp: public
+  annotations:
+    dns.mikrotik/enabled: "true"
+    dns.mikrotik/hostname: "photo.internal.bellee.net"
+    dns.mikrotik/comment: "Photo SPA frontend"
+spec:
+  type: LoadBalancer
+  selector:
+    app: photo-spa
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
