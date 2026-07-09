@@ -59,6 +59,8 @@ This controller watches for Kubernetes services and automatically creates/update
 
 ### Step 1: Build the Docker Image
 
+Automated option: this repository includes a GitHub Actions workflow at `.github/workflows/mikrotik-dns-controller-image.yml` that builds and publishes `ghcr.io/cbellee/mikrotik-dns-controller` on pushes to `main` when files under `mikrotik-dns-controller/` change.
+
 ```bash
 cd mikrotik-dns-controller
 

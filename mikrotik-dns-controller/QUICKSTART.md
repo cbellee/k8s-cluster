@@ -8,6 +8,15 @@ This guide walks you through building and deploying the MikroTik DNS Controller.
 
 ### 1. Build & Push Docker Image
 
+The repository now includes a GitHub Actions workflow at `.github/workflows/mikrotik-dns-controller-image.yml`.
+When you push changes under `mikrotik-dns-controller/` to `main`, it automatically builds and publishes:
+
+- `ghcr.io/cbellee/mikrotik-dns-controller:latest` (default branch)
+- `ghcr.io/cbellee/mikrotik-dns-controller:sha-<commit>`
+- branch or tag-based image tags
+
+Use this manual flow only when you need an immediate local build/push:
+
 ```bash
 cd /home/chris/repos/k8s-cluster/mikrotik-dns-controller
 
