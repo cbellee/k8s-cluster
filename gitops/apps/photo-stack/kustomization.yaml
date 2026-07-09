@@ -6,3 +6,4 @@ resources:
   - ./photo-api-source.yaml
   - ./photo-api-release.yaml
   - ./photo-spa.yaml
+  - ./photo-spa-tls-secret.yaml
