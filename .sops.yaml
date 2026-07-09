@@ -2,3 +2,6 @@ creation_rules:
   - path_regex: ^gitops/platform/mikrotik-dns-controller/secret\.yaml$
     encrypted_regex: ^(data|stringData)$
     age: age14duyaevx6xguck5dmf75gkz4pkf8qlps2rlnlyzlj2wqq83vzquslucpe8
+  - path_regex: ^gitops/platform/monitoring/grafana-admin-secret\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: age14duyaevx6xguck5dmf75gkz4pkf8qlps2rlnlyzlj2wqq83vzquslucpe8

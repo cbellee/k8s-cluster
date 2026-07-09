@@ -3,6 +3,7 @@ kind: Kustomization
 
 # Cluster-level platform services and networking primitives.
 resources:
+  - ./monitoring
   - ./mikrotik-dns-controller
   - ./cilium-bgp/cilium-ip-pool.yaml
   - ./cilium-bgp/cilium-bgp-peer-config.yaml
