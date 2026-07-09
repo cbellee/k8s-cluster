@@ -15,6 +15,10 @@ spec:
       labels:
         app: photo-spa
     spec:
+      volumes:
+        - name: tls-cert
+          secret:
+            secretName: photo-spa-tls
       containers:
         - name: photo-spa
           image: ghcr.io/cbellee/photo-spa:latest
@@ -22,6 +26,12 @@ spec:
           ports:
             - containerPort: 80
               name: http
+            - containerPort: 443
+              name: https
+          volumeMounts:
+            - name: tls-cert
+              mountPath: /etc/nginx/certs
+              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -50,3 +60,6 @@ spec:
     - name: http
       port: 80
       targetPort: http
+    - name: https
+      port: 443
+      targetPort: https
