@@ -4,6 +4,12 @@ A Terraform-based libvirt implementation of the working `vagrant-k8s-cluster` se
 
 This project keeps the Kubernetes and Cilium provisioning behavior aligned with the existing implementation by reusing the same Ansible playbooks, Cilium values, and BGP manifests under [ansible](./ansible).
 
+## Session Notes
+
+For a summary of today's Terraform, Flux, and platform changes, see:
+
+- [CHANGES-2026-07-09.md](../CHANGES-2026-07-09.md)
+
 ## What Terraform replaces
 
 Terraform replaces the Vagrant layer by:

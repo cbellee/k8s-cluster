@@ -2,6 +2,12 @@
 
 This folder contains a minimal Flux GitOps scaffold for this repository.
 
+## Session Notes
+
+For a summary of today's infrastructure and GitOps changes, see:
+
+- [CHANGES-2026-07-09.md](../CHANGES-2026-07-09.md)
+
 ## Current Scope
 
 Flux bootstrap points at this cluster entrypoint:
