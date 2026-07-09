@@ -3,6 +3,8 @@ kind: Kustomization
 
 # Cluster-level platform services and networking primitives.
 resources:
+  - ./cert-manager
+  - ./ingress-nginx
   - ./monitoring
   - ./mikrotik-dns-controller
   - ./cilium-bgp/cilium-ip-pool.yaml

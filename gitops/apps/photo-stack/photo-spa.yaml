@@ -15,10 +15,6 @@ spec:
       labels:
         app: photo-spa
     spec:
-      volumes:
-        - name: tls-cert
-          secret:
-            secretName: photo-spa-tls
       containers:
         - name: photo-spa
           image: ghcr.io/cbellee/photo-spa:latest
@@ -26,12 +22,6 @@ spec:
           ports:
             - containerPort: 80
               name: http
-            - containerPort: 443
-              name: https
-          volumeMounts:
-            - name: tls-cert
-              mountPath: /etc/nginx/certs
-              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -47,19 +37,36 @@ metadata:
   namespace: photo
   labels:
     app: photo-spa
-    bgp: public
-  annotations:
-    dns.mikrotik/enabled: "true"
-    dns.mikrotik/hostname: "photo.internal.bellee.net"
-    dns.mikrotik/comment: "Photo SPA frontend"
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: photo-spa
   ports:
     - name: http
       port: 80
       targetPort: http
-    - name: https
-      port: 443
-      targetPort: https
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: photo-spa
+  namespace: photo
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - photos.bellee.net
+      secretName: photo-spa-tls
+  rules:
+    - host: photos.bellee.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: photo-spa
+                port:
+                  number: 80

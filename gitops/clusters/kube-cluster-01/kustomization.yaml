@@ -6,4 +6,5 @@ kind: Kustomization
 resources:
   - ./flux-system
   - ./infrastructure.yaml
+  - ./tls.yaml
   - ./apps.yaml
