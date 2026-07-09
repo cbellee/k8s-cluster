@@ -13,6 +13,8 @@ locals {
   resolved_flux_git_url = trimspace(var.flux_git_url) != "" ? trimspace(var.flux_git_url) : (
     trimspace(var.flux_github_owner) != "" ? "https://github.com/${trimspace(var.flux_github_owner)}/${var.flux_repo_name}.git" : ""
   )
+  # The provider is initialized even when flux_bootstrap_enabled=false; keep URL valid to avoid schema errors on destroy.
+  flux_provider_git_url = var.flux_bootstrap_enabled ? local.resolved_flux_git_url : "https://example.com/flux-placeholder.git"
   hosts_content = templatefile("${path.module}/templates/hosts.tftpl", {
     nodes             = local.nodes
     cp_endpoint_node  = local.cp_endpoint_node
@@ -26,7 +28,7 @@ provider "flux" {
   }
 
   git = {
-    url    = local.resolved_flux_git_url
+    url    = local.flux_provider_git_url
     branch = var.flux_branch
 
     http = {
