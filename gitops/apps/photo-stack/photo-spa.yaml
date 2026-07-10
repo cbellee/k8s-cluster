@@ -64,6 +64,13 @@ spec:
     - host: photo.internal.bellee.net
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: photo-api
+                port:
+                  number: 8080
           - path: /
             pathType: Prefix
             backend:
