@@ -21,15 +21,17 @@ spec:
       retries: 0
   values:
     photoApi:
-      replicaCount: 1
       image:
+        repository: ghcr.io/cbellee/photo
         tag: 1.0.0-9dcf1a3
+      replicaCount: 1
       service:
         type: LoadBalancer
     resizeApi:
-      replicaCount: 1
       image:
+        repository: ghcr.io/cbellee/resize
         tag: 1.0.0-9dcf1a3
+      replicaCount: 1
       dapr:
         enabled: false
     blobemu:
