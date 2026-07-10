@@ -42,6 +42,10 @@ spec:
       externalUrl: https://photo.internal.bellee.net/storage
       service:
         type: ClusterIP
+    otel:
+      tracesEnabled: "false"
+      metricsEnabled: "false"
+      logsEnabled: "false"
     otelCollector:
       enabled: false
     daprComponent:
@@ -71,6 +75,15 @@ spec:
                 value:
                   name: IMAGES_CONTAINER_NAME
                   value: uploads
+          - target:
+              kind: Deployment
+              name: resize-api
+            patch: |
+              - op: add
+                path: /spec/template/spec/containers/0/env/-
+                value:
+                  name: HEALTH_PORT
+                  value: "8082"
           - target:
               kind: StatefulSet
               name: blobemu
