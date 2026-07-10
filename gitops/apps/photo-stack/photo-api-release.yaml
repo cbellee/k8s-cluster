@@ -51,6 +51,15 @@ spec:
                   dns.mikrotik/enabled: "true"
                   dns.mikrotik/hostname: "photo-api.internal.bellee.net"
                   dns.mikrotik/comment: "Photo API service"
+            - target:
+                kind: Deployment
+                name: photo-api
+              patch: |
+                - op: add
+                  path: /spec/template/spec/containers/0/env/-
+                  value:
+                    name: IMAGES_CONTAINER_NAME
+                    value: uploads
           - target:
               kind: StatefulSet
               name: blobemu
