@@ -24,6 +24,8 @@ spec:
       image:
         repository: ghcr.io/cbellee/photo
         tag: 1.0.0-9dcf1a3
+      imagePullSecrets:
+        - name: ghcr-pull-secret
       replicaCount: 1
       service:
         type: LoadBalancer
@@ -31,6 +33,8 @@ spec:
       image:
         repository: ghcr.io/cbellee/resize
         tag: 1.0.0-9dcf1a3
+      imagePullSecrets:
+        - name: ghcr-pull-secret
       replicaCount: 1
       dapr:
         enabled: false
