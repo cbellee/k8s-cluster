@@ -53,6 +53,7 @@ metadata:
   namespace: photo
   annotations:
     cert-manager.io/cluster-issuer: internal-ca
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
 spec:
   ingressClassName: nginx
   tls:
