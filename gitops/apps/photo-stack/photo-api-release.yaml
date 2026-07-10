@@ -29,6 +29,7 @@ spec:
       dapr:
         enabled: false
     blobemu:
+      externalUrl: https://photo.internal.bellee.net/storage
       service:
         type: ClusterIP
     otelCollector:
@@ -72,9 +73,6 @@ spec:
               - op: replace
                 path: /spec/volumeClaimTemplates
                 value: []
-              - op: replace
-                path: /spec/template/spec/containers/0/env/0/value
-                value: ""
           - target:
               kind: StatefulSet
               name: rabbitmq
