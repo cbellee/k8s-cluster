@@ -22,10 +22,14 @@ spec:
   values:
     photoApi:
       replicaCount: 1
+      image:
+        tag: 1.0.0-9dcf1a3
       service:
         type: LoadBalancer
     resizeApi:
       replicaCount: 1
+      image:
+        tag: 1.0.0-9dcf1a3
       dapr:
         enabled: false
     blobemu:
