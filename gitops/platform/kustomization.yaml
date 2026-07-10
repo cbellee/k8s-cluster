@@ -3,6 +3,7 @@ kind: Kustomization
 
 # Cluster-level platform services and networking primitives.
 resources:
+  - ./dapr
   - ./cert-manager
   - ./ingress-nginx
   - ./monitoring

@@ -1,0 +1,24 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: dapr
+  namespace: dapr-system
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: dapr
+      sourceRef:
+        kind: HelmRepository
+        name: dapr
+        namespace: flux-system
+      interval: 1h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    global:
+      logAsJson: true

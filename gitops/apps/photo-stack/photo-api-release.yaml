@@ -37,7 +37,7 @@ spec:
         - name: ghcr-pull-secret
       replicaCount: 1
       dapr:
-        enabled: false
+        enabled: true
     blobemu:
       externalUrl: https://photo.internal.bellee.net/storage
       service:
@@ -49,7 +49,7 @@ spec:
     otelCollector:
       enabled: false
     daprComponent:
-      enabled: false
+      enabled: true
   postRenderers:
     - kustomize:
         patches:
