@@ -22,3 +22,6 @@ spec:
   values:
     global:
       logAsJson: true
+    dapr_scheduler:
+      cluster:
+        inMemoryStorage: true
