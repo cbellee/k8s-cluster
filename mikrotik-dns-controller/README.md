@@ -1,10 +1,16 @@
 # MikroTik DNS Controller for Kubernetes
 
-A custom Kubernetes controller that automatically manages DNS entries on a MikroTik RouterOS device based on LoadBalancer services in your cluster.
+A custom Kubernetes controller that manages MikroTik RouterOS DNS entries from
+opted-in LoadBalancer Services and HTTPRoutes attached to ready Gateways.
 
 ## How It Works
 
-This controller watches for Kubernetes services and automatically creates/updates/deletes static DNS entries on your MikroTik router. Here's the workflow:
+This controller watches Services, Gateways, HTTPRoutes and Namespace labels,
+reconciles an initial full inventory, and retries router failures. Existing
+Service annotations continue to work. HTTPRoutes supply concrete hostnames;
+accepted parent Gateways supply IPv4 addresses.
+
+The original Service flow is:
 
 ```
 ┌─────────────────────┐
@@ -40,7 +46,9 @@ This controller watches for Kubernetes services and automatically creates/update
 - ✅ **Service Annotation Driven**: Uses Kubernetes annotations to configure behavior per-service
 - ✅ **Auto-Update**: Changes external IP? DNS updates automatically
 - ✅ **Auto-Delete**: Service deleted? DNS entry cleaned up automatically
-- ✅ **RBAC Secured**: Minimal permissions, watches services only
+- ✅ **Gateway API**: Opted-in HTTPRoute hostnames resolve to accepted parent Gateway addresses
+- ✅ **Safe Cleanup**: Shared hostname claims and persistent controller ownership markers
+- ✅ **RBAC Secured**: Read-only access to Services, Namespaces, Gateways and HTTPRoutes
 - ✅ **Error Recovery**: Automatically retries failed API calls
 - ✅ **Namespace Agnostic**: Watches services across all namespaces
 
@@ -52,6 +60,10 @@ This controller watches for Kubernetes services and automatically creates/update
    - User with permissions to manage `/ip/dns/static` entries
    - Network connectivity on API ports
 3. **Network Access** from cluster to MikroTik API (TCP port 8728 or 8729)
+4. **Gateway API v1 CRDs** for `Gateway` and `HTTPRoute` to enable route discovery.
+   If both are absent, the controller explicitly logs Service-only mode. Restart
+   it after installing the CRDs. Partial installations, API errors and missing
+   RBAC fail startup rather than using a partial inventory for deletion.
 
 **Important**: MikroTik API uses a custom **binary protocol**, not HTTP REST. This controller uses the [go-routeros](https://github.com/go-routeros/routeros) library (v3.0.1+) which handles the binary protocol transparently.
 
@@ -189,8 +201,7 @@ kubectl logs -n mikrotik-dns-controller -f deployment/mikrotik-dns-controller
 You should see:
 
 ```
-Adding/updating DNS entry: colourserver-green.internal.bellee.net -> 172.16.0.0
-Successfully synced service default/colourserver-green to MikroTik DNS
+Synced DNS hostname colourserver-green.internal.bellee.net -> 172.16.0.0 (Service/default/colourserver-green)
 ```
 
 ### Verify DNS Entry
@@ -211,12 +222,121 @@ Or test DNS resolution:
 nslookup colourserver-green.internal.bellee.net 192.168.88.1
 ```
 
+### HTTPRoute discovery
+
+Opt in on the HTTPRoute, not on the Gateway's generated Service:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: blue
+  namespace: default
+  annotations:
+    dns.mikrotik/enabled: "true"
+    dns.mikrotik/comment: "Blue application through Cilium Gateway"
+spec:
+  parentRefs:
+    - name: shared-gateway
+      sectionName: https
+  hostnames:
+    - blue.gateway
+  rules:
+    - backendRefs:
+        - name: colourserver-blue
+          port: 80
+```
+
+`dns.mikrotik/hostname` is **not used on HTTPRoutes**: `spec.hostnames` is the
+source of DNS names. Multiple concrete names are supported. A Gateway listener
+hostname is a constraint, not an independently published record.
+
+Publication requires current-generation HTTPRoute `Accepted=True` and
+`ResolvedRefs=True` status for a declared parent, current Gateway
+`Accepted=True`/`Programmed=True` status, and a matching accepted/programmed
+HTTP/HTTPS listener. Parent namespace, section and port, listener hostname
+intersection, allowed route kinds, and `allowedRoutes.namespaces`
+(`Same`, `All`, or label `Selector`) are checked. Namespace label changes also
+trigger reconciliation.
+
+For Gateway discovery, only `IPAddress` IPv4 addresses are supported.
+Wildcard/omitted route hostnames and Gateway hostname/IPv6 addresses are
+explicitly logged and skipped. A concrete name can match a wildcard listener.
+If accepted parents produce different IPv4 addresses, publication is considered
+a conflict: no arbitrary address is selected.
+
+### Ownership, duplicate hostnames and deletion
+
+- Services and routes are reconciled together. Multiple resources can claim the
+  same hostname/address; deleting one does not remove another's record.
+- Different addresses for one name, or duplicate RouterOS records for that name,
+  are logged and left unchanged. This version maintains one record per name;
+  it does not implement DNS round-robin across Gateways.
+- New/adopted records have comments prefixed with `[k8s-mikrotik-dns] `.
+  The original description follows the prefix.
+- Only marked records with no remaining desired claimant are deleted. This
+  handles opt-out, rename, route/Gateway removal, lost acceptance and restarts.
+- Unmarked legacy records are adopted only if their existing comment exactly
+  matches a current claimant's expected comment. Other unmarked records are
+  preserved, including manual DNS entries. Retain the old comment during
+  migration; inspect and resolve mismatches manually rather than deleting records.
+- First let the new controller adopt legacy records while their old Service
+  opt-ins still exist. Legacy records whose resources disappeared before
+  adoption cannot be safely identified for automatic cleanup.
+- Run one controller instance managing this router inventory. The ownership
+  prefix is not a multi-cluster partition or leader-election mechanism.
+
+Watch events enqueue full reconciliation; a one-minute refresh detects router
+drift. API failures are returned and retried with rate limiting. Unchanged
+records are not rewritten.
+
+### Roll out the route-aware controller
+
+The new binary must be published/deployed; editing manifests alone does not
+upgrade the running image.
+
+1. Install Gateway API CRDs if absent.
+2. Apply/reconcile the updated RBAC **before** rolling out the new image:
+
+   ```bash
+   kubectl apply -f gitops/platform/mikrotik-dns-controller/rbac.yaml
+   ```
+
+3. Build and publish the image using the existing workflow or the build commands
+   above. Prefer an immutable image tag in the deployment. If using the existing
+   `latest` tag, wait for the image build to succeed before restarting:
+
+   ```bash
+   kubectl -n mikrotik-dns-controller rollout restart deployment/mikrotik-dns-controller
+   kubectl -n mikrotik-dns-controller rollout status deployment/mikrotik-dns-controller --timeout=5m
+   kubectl -n mikrotik-dns-controller logs deployment/mikrotik-dns-controller --tail=100
+   ```
+
+   A Running pod alone does not prove cache sync or DNS reconciliation succeeded.
+   Verify successful sync logs and router records. Wait for old controller pods
+   to terminate before switching discovery ownership.
+
+4. Apply/reconcile the updated
+   [pilot](../gitops/apps/colour-server/blue-gateway.yaml). It removes DNS
+   annotations from `Gateway.spec.infrastructure` and adds opt-in/comment
+   annotations to the HTTPRoute. The existing comment is retained for adoption.
+   The `bgp: public` Service label stays in place.
+5. Verify the generated Service no longer has DNS opt-in annotations, the route
+   is accepted, and `colourserver-blue.gateway` resolves to the current Gateway
+   address through MikroTik DNS. Test a new route hostname or Gateway address
+   change before relying on the new discovery path for production.
+
+Apply the RBAC/controller rollout before route opt-in changes when managing
+these resources through Flux as well. If the generated Service retains old DNS
+annotations, remove those stale annotations after checking its owner and the
+route's successful DNS claim.
+
 ## Annotations Reference
 
 | Annotation | Required | Values | Example |
 |---|---|---|---|
-| `dns.mikrotik/enabled` | Yes | `"true"` or `"yes"` | `dns.mikrotik/enabled: "true"` |
-| `dns.mikrotik/hostname` | Yes (if enabled) | Fully qualified hostname | `dns.mikrotik/hostname: "my-app.internal.bellee.net"` |
+| `dns.mikrotik/enabled` | Yes, on Service or HTTPRoute | `"true"` or `"yes"` | `dns.mikrotik/enabled: "true"` |
+| `dns.mikrotik/hostname` | Services only, if enabled | Concrete hostname; HTTPRoutes use `spec.hostnames` | `dns.mikrotik/hostname: "my-app.internal.bellee.net"` |
 | `dns.mikrotik/comment` | No | Text description | `dns.mikrotik/comment: "My app for X"` |
 
 ## Architecture & Code Overview
@@ -224,44 +344,39 @@ nslookup colourserver-green.internal.bellee.net 192.168.88.1
 ### main.go
 - Loads configuration from environment variables
 - Creates Kubernetes and MikroTik clients
-- Starts the service watcher loop
+- Starts the shared informer reconciliation loop
 - Handles graceful shutdown
 
 ### mikrotik.go
 - `MikroTikClient`: Wrapper around `routeros.Client` for MikroTik API
 - Uses **binary socket protocol** (not HTTP) on port 8728/8729
-- `AddDNSEntry()`: Creates or updates static DNS entry via `/ip/dns/static/add` or `/ip/dns/static/set`
-- `RemoveDNSEntry()`: Deletes DNS entry via `/ip/dns/static/remove`
-- `findDNSEntry()`: Searches DNS entries via `/ip/dns/static/print`
+- `ListDNSEntries()`: Reads the RouterOS inventory, including ownership comments
+- `SetDNSEntry()`: Creates or updates a record using its RouterOS ID
+- `DeleteDNSEntry()`: Deletes an owned orphan using its RouterOS ID
 - All communication handled by go-routeros which abstracts the MikroTik protocol
 - Parses `proto.Sentence` responses with `List` field (slice of `proto.Pair` with Key/Value strings)
 
-### Service Watcher (main.go)
-- `ServiceReconciler`: Watches service events
-- Processes Added/Modified/Deleted events
-- Calls MikroTik API based on service state
-- Implements retry logic for failed operations
+### controller.go and gateway.go
+- Shared informers relist/reconnect and enqueue one serialized reconciliation
+- Service and route claims are resolved against a shared DNS inventory
+- Gateway acceptance, listener constraints and namespace selection are checked
+- Ownership survives process restarts in RouterOS comments
 
 ### Control Flow
 
 ```
-Watch Event (service changed)
+Watch Event (Service, HTTPRoute, Gateway or Namespace changed)
     │
     ├─ Check annotations for enabled flag
     │  └─ If disabled or missing → skip
     │
-    ├─ Check Service Type
-    │  └─ If not LoadBalancer → skip
+    ├─ Collect opted-in Service and accepted HTTPRoute claims
+    ├─ Resolve Gateway/listener constraints and addresses
+    ├─ Coalesce shared names and detect conflicting addresses
     │
-    ├─ Extract External IP
-    │  └─ If empty → skip (wait for IP assignment)
-    │
-    ├─ Get hostname from annotation
-    │  └─ If missing → skip
-    │
-    └─ Call MikroTik API
-       └─ AddDNSEntry() for Added/Modified events
-       └─ RemoveDNSEntry() for Deleted events
+    └─ Reconcile RouterOS inventory
+       ├─ Create/update desired records
+       └─ Delete only owned records with no remaining claim
 ```
 
 ## Troubleshooting
@@ -312,8 +427,8 @@ Common issues:
 kubectl logs -n mikrotik-dns-controller deployment/mikrotik-dns-controller
 
 # Should show:
-# "Connected to MikroTik successfully"
-# "Successfully synced service..."
+# "DNS inventory caches synced; starting reconciliation"
+# "Synced DNS hostname ..."
 
 # Verify DNS entries on router:
 ssh -l belstarr 192.168.88.1 "/ip dns static print"
@@ -334,16 +449,16 @@ ssh -l belstarr 192.168.88.1 "/ip dns static print"
 
 - **Single Replica**: Designed for single controller instance (watching API)
 - **Memory Usage**: ~64-128 MB average
-- **API Calls**: One per service state change (low frequency)
-- **Latency**: 1-5 seconds from service external IP to DNS entry creation
+- **API Calls**: One inventory read per reconciliation, plus changed records
+- **Refresh**: Watch events plus a one-minute inventory refresh
 
 ## Security Considerations
 
 1. **Secrets**: MikroTik credentials stored as Kubernetes Secret
    - Consider using `sealed-secrets` or `external-secrets` for production
    
-2. **RBAC**: Controller only reads services (watch permission)
-   - Cannot modify services or other resources
+2. **RBAC**: Controller reads Services, Namespaces, Gateways and HTTPRoutes
+   - Cannot modify Kubernetes resources
    
 3. **Network**: Ensure firewall allows cluster → MikroTik API access
    - Default ports: 8728 (plain) or 8729 (SSL)

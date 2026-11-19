@@ -4,6 +4,11 @@ This guide walks you through building and deploying the MikroTik DNS Controller.
 
 **Status**: ✅ Verified working with go-routeros v3.0.1 and MikroTik binary protocol
 
+For HTTPRoute discovery, install Gateway API v1 CRDs, deploy the updated RBAC and
+controller image first, then annotate routes. See
+[HTTPRoute discovery and rollout](./README.md#httproute-discovery) for acceptance
+checks, ownership rules and the migration from Service annotations.
+
 ## 5-Minute Setup
 
 ### 1. Build & Push Docker Image
@@ -72,16 +77,13 @@ kubectl logs -n mikrotik-dns-controller -f deployment/mikrotik-dns-controller
 
 You should see:
 ```
-2026/07/07 14:21:28 Connecting to MikroTik at 192.168.88.1...
-2026/07/07 14:21:28 Connected to MikroTik successfully
-2026/07/07 14:21:28 Connected to Kubernetes successfully
-2026/07/07 14:21:28 Starting service watcher...
+DNS inventory caches synced; starting reconciliation
 ```
 
 ### Technology Stack
 
 - **MikroTik API**: Binary protocol (not REST) via [go-routeros/routeros v3.0.1](https://github.com/go-routeros/routeros)
-- **Kubernetes**: Watches services using client-go library
+- **Kubernetes**: Watches Services, Gateways, HTTPRoutes and Namespace labels using client-go informers
 - **Protocol**: Length-prefixed binary words on TCP 8728/8729
 
 ### 5. Update Your Services
@@ -113,10 +115,8 @@ kubectl logs -n mikrotik-dns-controller -f deployment/mikrotik-dns-controller
 You should see:
 
 ```
-2026/07/07 14:21:28 Adding/updating DNS entry: colourserver-blue.internal.bellee.net -> 172.16.0.0
-2026/07/07 14:21:28 Successfully synced service default/colourserver-blue to MikroTik DNS
-2026/07/07 14:21:28 Adding/updating DNS entry: colourserver-green.internal.bellee.net -> 172.16.0.1
-2026/07/07 14:21:28 Successfully synced service default/colourserver-green to MikroTik DNS
+Synced DNS hostname colourserver-blue.internal.bellee.net -> 172.16.0.0 (Service/default/colourserver-blue)
+Synced DNS hostname colourserver-green.internal.bellee.net -> 172.16.0.1 (Service/default/colourserver-green)
 ```
 
 ### 6. Verify DNS Entries
@@ -220,7 +220,10 @@ Shows how to authenticate to Kubernetes API from within a pod.
 
 ```
 mikrotik-dns-controller/
-├── main.go              # Entry point + ServiceReconciler (watcher logic)
+├── main.go              # Configuration, clients and shutdown
+├── controller.go        # Informers, shared claims and DNS ownership
+├── gateway.go           # Route acceptance and Gateway/listener discovery
+├── controller_test.go   # Discovery, conflicts and cleanup tests
 ├── mikrotik.go          # MikroTikClient (external API integration)
 ├── go.mod / go.sum      # Go dependencies
 ├── Dockerfile           # Multi-stage build for production
@@ -235,13 +238,13 @@ mikrotik-dns-controller/
 
 ## Key Code Sections to Study
 
-### Service Watcher Loop (main.go, ~20 lines)
-Shows the core watch-reconcile-act pattern.
+### Shared Informers (controller.go)
+Shows list/watch cache synchronization and queued reconciliation.
 
-### Reconciliation Logic (main.go, ~40 lines)
-Shows how to extract data and call external APIs.
+### Reconciliation Logic (controller.go and gateway.go)
+Shows how Service and HTTPRoute claims are combined before changing DNS.
 
-### MikroTik Client with Binary Protocol (mikrotik.go, ~150 lines)
+### MikroTik Client with Binary Protocol (mikrotik.go)
 Shows go-routeros integration, sentence parsing, and API command execution.
 
 ### RBAC Definition (k8s/rbac.yaml, ~25 lines)
@@ -251,10 +254,9 @@ Shows minimal permission granting.
 
 ### Add Support for Ingress
 
-Replace service watcher with ingress watcher:
-```go
-watcher, err := sr.kubeClient.NetworkingV1().Ingresses("").Watch(ctx, metav1.ListOptions{})
-```
+Add an Ingress informer and convert its desired records into the same shared
+claim inventory. Do not add an independent writer/deleter that can race with
+Service or HTTPRoute ownership.
 
 ### Add Metrics
 
