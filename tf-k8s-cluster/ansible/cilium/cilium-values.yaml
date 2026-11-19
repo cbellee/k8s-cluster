@@ -7,6 +7,9 @@ k8sServicePort: 6443
 bgpControlPlane:
   enabled: true
 
+gatewayAPI:
+  enabled: true
+
 ipam:
   mode: cluster-pool
   operator:

@@ -220,6 +220,27 @@ only the intentional cluster settings: BGP, kube-proxy replacement, Hubble
 Relay/UI and metrics, and the existing cluster-pool IPAM allocation settings.
 Component images and other defaults come from the selected chart version.
 
+The values also enable the Cilium Gateway API controller. Install the Gateway
+API v1.6.3 standard CRDs before applying these values. Enabling the controller
+does not create application Gateways or HTTPRoutes, or replace existing Ingress
+resources.
+
+The [blue colour server Gateway pilot](../gitops/apps/colour-server/blue-gateway.yaml)
+exposes `https://colourserver-blue.gateway` using an `internal-ca` certificate,
+the existing `default/colourserver-blue` Service on port 80, and Cilium's
+LoadBalancer IPAM/BGP. The HTTPRoute carries the MikroTik DNS opt-in; the
+route-aware DNS controller resolves its accepted Gateway address. Deploy the
+updated controller image and RBAC before switching from the original generated
+Service annotations. Clients must use the MikroTik DNS resolver (or a resolver forwarding
+to it) and trust the internal CA. The original blue LoadBalancer remains
+unchanged. The pilot is included in the apps Flux kustomization; Gateway API
+CRDs, the enabled Cilium controller and the `internal-ca` issuer must exist before
+reconciliation.
+
+See [Cilium Gateway API installation and blue application pilot](./docs/cilium-gateway-api.md)
+for the installation commands, DNS/BGP integration, certificate setup and macOS
+trust troubleshooting.
+
 The API endpoint `192.168.89.10:6443` matches the current kubeconfig and lets
 Cilium reach Kubernetes without depending on ClusterIP service routing. This is
 a single control-plane address, not an HA endpoint; update it if the cluster API

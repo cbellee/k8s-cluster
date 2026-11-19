@@ -5,4 +5,5 @@ kind: Kustomization
 resources:
   - ./photo-stack
   - ./colour-server/blue.yaml
+  - ./colour-server/blue-gateway.yaml
   - ./colour-server/green.yaml

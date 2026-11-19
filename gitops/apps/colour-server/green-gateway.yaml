@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/cert-manager.io/certificate_v1.json
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: colourserver-green-gateway
+  namespace: default
+spec:
+  secretName: colourserver-green-gateway-tls
+  dnsNames:
+    - colourserver-green.gateway
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+  issuerRef:
+    name: internal-ca
+    kind: ClusterIssuer
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/gateway_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: colourserver-green-gateway
+  namespace: default
+spec:
+  gatewayClassName: cilium
+  infrastructure:
+    labels:
+      bgp: public
+  listeners:
+    - name: https
+      hostname: colourserver-green.gateway
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: colourserver-green-gateway-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: colourserver-green-gateway
+  namespace: default
+  annotations:
+    dns.mikrotik/enabled: "true"
+    dns.mikrotik/comment: "Cilium Gateway pilot for colour server green"
+spec:
+  parentRefs:
+    - name: colourserver-green-gateway
+      sectionName: https
+  hostnames:
+    - colourserver-green.gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: colourserver-green
+          port: 80
