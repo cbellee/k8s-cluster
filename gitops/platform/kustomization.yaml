@@ -4,6 +4,7 @@ kind: Kustomization
 # Cluster-level platform services and networking primitives.
 resources:
   - ./dapr
+  - ./local-path-storage
   - ./cert-manager
   - ./ingress-nginx
   - ./monitoring

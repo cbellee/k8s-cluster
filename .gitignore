@@ -27,3 +27,6 @@ kubeconfig.bak
 .DS_Store
 Thumbs.db
 k8s-install/backups/
+
+# Certificates
+*.crt

@@ -23,7 +23,7 @@ spec:
     photoApi:
       image:
         repository: ghcr.io/cbellee/photo
-        tag: 1.0.0-9dcf1a3
+        tag: 1.0.0-9dcf1a3-photofix-20260712a
       imagePullSecrets:
         - name: ghcr-pull-secret
       replicaCount: 1
@@ -32,7 +32,7 @@ spec:
     resizeApi:
       image:
         repository: ghcr.io/cbellee/resize
-        tag: 1.0.0-9dcf1a3
+        tag: 1.0.0-9dcf1a3-resizefix-20260712a
       imagePullSecrets:
         - name: ghcr-pull-secret
       replicaCount: 1
@@ -84,6 +84,11 @@ spec:
                 value:
                   name: HEALTH_PORT
                   value: "8082"
+              - op: add
+                path: /spec/template/spec/containers/0/env/-
+                value:
+                  name: BLOB_EMULATOR_URL
+                  value: "http://blobemu.photo.svc.cluster.local:10000"
           - target:
               kind: StatefulSet
               name: blobemu

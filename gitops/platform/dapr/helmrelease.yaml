@@ -22,6 +22,9 @@ spec:
   values:
     global:
       logAsJson: true
+      scheduler:
+        enabled: true
     dapr_scheduler:
       cluster:
-        inMemoryStorage: true
+        inMemoryStorage: false
+        storageClassName: local-path

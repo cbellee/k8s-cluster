@@ -213,6 +213,34 @@ What happens during `apply`:
 6. By default, Terraform also updates `~/.kube/config` on the VM host.
 7. If `flux_bootstrap_enabled=true`, Terraform runs Flux bootstrap declaratively using the `fluxcd/flux` provider (`flux_bootstrap_git`) against the exported kubeconfig.
 
+## Cilium values and upgrades
+
+[ansible/cilium/cilium-values.yaml](./ansible/cilium/cilium-values.yaml) contains
+only the intentional cluster settings: BGP, kube-proxy replacement, Hubble
+Relay/UI and metrics, and the existing cluster-pool IPAM allocation settings.
+Component images and other defaults come from the selected chart version.
+
+The API endpoint `192.168.89.10:6443` matches the current kubeconfig and lets
+Cilium reach Kubernetes without depending on ClusterIP service routing. This is
+a single control-plane address, not an HA endpoint; update it if the cluster API
+endpoint changes.
+
+Preserve the existing IPAM pool (`10.0.0.0/8`) and node mask (`/24`) during
+upgrades. Bootstrap can override the pool through
+`cilium_cluster_pool_ipv4_cidr`. `upgradeCompatibility: "1.18"` reflects the
+cluster's initial Cilium minor version.
+
+For the upgrade from 1.18.15 to 1.20.5, first update to 1.18.17, then 1.19.11,
+then 1.20.5. Run the target-version preflight checks and validate connectivity
+at each stage. Pass the minimal values explicitly rather than using
+`--reuse-values` or a full export of old chart defaults. The LoadBalancer IP pool
+manifests use `cilium.io/v2`; reconcile them before upgrading to 1.19.
+Preparing these files does not apply the manifests or upgrade the cluster.
+
+See the [Cilium upgrade guide](https://docs.cilium.io/en/stable/operations/upgrade/).
+The completed upgrade and kube-proxy removal, including commands, verification
+and rollback, are recorded in [Cilium upgrade and kube-proxy removal](./docs/cilium-upgrade.md).
+
 ## Verify
 
 ```bash

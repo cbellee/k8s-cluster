@@ -121,7 +121,7 @@ variable "cri_socket" {
 variable "cilium_version" {
   description = "Cilium Helm chart version."
   type        = string
-  default     = "1.18.3"
+  default     = "1.20.5"
 }
 
 variable "cilium_cluster_pool_ipv4_cidr" {
