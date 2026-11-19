@@ -7,7 +7,7 @@ metadata:
 spec:
   secretName: colourserver-green-gateway-tls
   dnsNames:
-    - colourserver-green.gateway
+    - colourserver-green.gateway.internal.bellee.net
   usages:
     - digital signature
     - key encipherment
@@ -29,7 +29,7 @@ spec:
       bgp: public
   listeners:
     - name: https
-      hostname: colourserver-green.gateway
+      hostname: colourserver-green.gateway.internal.bellee.net
       port: 443
       protocol: HTTPS
       tls:
@@ -54,7 +54,7 @@ spec:
     - name: colourserver-green-gateway
       sectionName: https
   hostnames:
-    - colourserver-green.gateway
+    - colourserver-green.gateway.internal.bellee.net
   rules:
     - matches:
         - path:
