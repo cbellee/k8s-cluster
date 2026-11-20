@@ -8,3 +8,4 @@ resources:
   - ./grafana-repository.yaml
   - ./prometheus-release.yaml
   - ./grafana-release.yaml
+  - ./grafana-gateway.yaml

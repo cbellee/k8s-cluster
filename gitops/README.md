@@ -160,3 +160,46 @@ If staging fails, leave the original Ingress and nginx DNS claim in place and
 do not push the cutover. After cutover, rollback requires restoring the old
 Ingress and nginx Service DNS annotations and disabling the HTTPRoute DNS
 opt-in, so only one address is claimed. Verify DNS and HTTPS again.
+
+## Grafana Gateway API migration
+
+[`platform/monitoring/grafana-gateway.yaml`](./platform/monitoring/grafana-gateway.yaml)
+exposes `https://grafana.internal.bellee.net` using Cilium, an internal-CA
+Certificate, and an HTTP-to-HTTPS 308 redirect. The HTTPS HTTPRoute owns DNS,
+retaining the old Service's comment for DNS record adoption. The generated
+Gateway Service has `bgp: public`; the Grafana backend becomes ClusterIP and no
+longer reserves `172.16.0.10`. Grafana's public root URL uses HTTPS and session
+cookies are secure; TLS terminates at the Gateway, not the backend.
+
+Before pushing the cutover, stage the new resources:
+
+```bash
+kubectl apply -f gitops/platform/monitoring/grafana-gateway.yaml
+kubectl -n monitoring wait certificate/grafana-gateway --for=condition=Ready --timeout=2m
+kubectl -n monitoring wait gateway/grafana-gateway --for=condition=Programmed --timeout=2m
+kubectl -n monitoring get httproute grafana grafana-http-redirect -o yaml
+GATEWAY_IP=$(kubectl -n monitoring get gateway grafana-gateway -o jsonpath='{.status.addresses[0].value}')
+curl --fail --cacert internal-ca.crt \
+  --resolve "grafana.internal.bellee.net:443:$GATEWAY_IP" \
+  https://grafana.internal.bellee.net/api/health
+curl --head --resolve "grafana.internal.bellee.net:80:$GATEWAY_IP" \
+  http://grafana.internal.bellee.net/
+```
+
+Verify both routes have current `Accepted=True` and `ResolvedRefs=True` parent
+conditions. While the old Service still claims the hostname, DNS conflicts
+are expected and the existing record is preserved. After committing/pushing,
+Flux upgrades Grafana, changes its Service to ClusterIP, and removes the old
+Service DNS claim. Verify DNS resolves to the new Gateway IP and test login,
+dashboards and Grafana Live over HTTPS. Clients caching `172.16.0.10` must
+refresh DNS; that old address stops serving Grafana when the Service changes.
+Allow for a brief cutover interruption.
+
+Grafana currently has persistence disabled. The configuration change rolls
+its pod, so export any non-provisioned dashboards/settings before rollout;
+ephemeral database contents may be lost.
+
+If staging fails, do not push the cutover. To roll back after cutover, restore
+the old HelmRelease Service/configuration values and disable the HTTPS
+HTTPRoute's DNS opt-in so it no longer competes with the restored LoadBalancer.
+Verify DNS and access again.

@@ -25,14 +25,13 @@ spec:
       userKey: admin-user
       passwordKey: admin-password
     service:
-      type: LoadBalancer
-      labels:
-        bgp: public
-      annotations:
-        io.cilium/lb-ipam-ips: "172.16.0.10"
-        dns.mikrotik/enabled: "true"
-        dns.mikrotik/hostname: "grafana.internal.bellee.net"
-        dns.mikrotik/comment: "Grafana monitoring dashboard"
+      type: ClusterIP
+    grafana.ini:
+      server:
+        domain: grafana.internal.bellee.net
+        root_url: https://grafana.internal.bellee.net
+      security:
+        cookie_secure: true
     persistence:
       enabled: false
     testFramework:
