@@ -6,7 +6,6 @@ resources:
   - ./dapr
   - ./local-path-storage
   - ./cert-manager
-  - ./ingress-nginx
   - ./monitoring
   - ./mikrotik-dns-controller
   - ./cilium-bgp/cilium-ip-pool.yaml
