@@ -77,13 +77,88 @@ flux bootstrap github \
   --personal
 ```
 
-## Verify Reconciliation
+## Flux CLI quick guide
+
+Commands use the current kubeconfig context. Check it with
+`kubectl config current-context` before making changes.
+
+### Check status or watch a rollout
 
 ```bash
 flux get all -A
-kubectl get kustomizations -A
-kubectl get gitrepositories -A
+flux get sources git -A
+flux get helmreleases -A
+flux get kustomizations -A --watch
 ```
+
+Look for `READY=True`, `SUSPENDED=False`, and the expected Git revision.
+Press Ctrl+C to stop watching.
+
+### Apply pushed Git changes immediately
+
+Flux reads the remote repository, not local edits: commit and push first.
+
+```bash
+flux reconcile kustomization platform -n flux-system --with-source
+flux reconcile kustomization apps -n flux-system
+```
+
+`--with-source` fetches the latest source before applying manifests. Apps depend
+on platform health, so fix platform failures first. For TLS manifests, use
+`flux reconcile kustomization tls -n flux-system --with-source`.
+For cluster composition changes, reconcile the `flux-system` Kustomization.
+
+### Reconcile a Helm release
+
+After Flux has applied the HelmRelease values from Git, trigger its Helm action:
+
+```bash
+flux reconcile helmrelease grafana -n monitoring
+flux get helmreleases -n monitoring
+```
+
+Add `--with-source` to refresh the release's chart source too; this does not
+fetch updated HelmRelease values from this repository.
+
+### Diagnose a failure
+
+```bash
+flux get kustomizations -A --status-selector ready=false
+flux logs --all-namespaces --level=error --since=10m
+flux logs --kind=HelmRelease --name=grafana -n monitoring --since=10m
+kubectl -n monitoring describe helmrelease grafana
+```
+
+Logs can contain historical failures; compare timestamps with current status.
+After fixing the cause of an exhausted Helm retry count, reset and retry:
+
+```bash
+flux reconcile helmrelease grafana -n monitoring --reset
+```
+
+### Pause and resume reconciliation
+
+For temporary Helm troubleshooting:
+
+```bash
+flux suspend helmrelease grafana -n monitoring
+flux resume helmrelease grafana -n monitoring
+```
+
+To pause manifest application instead, use
+`flux suspend kustomization apps -n flux-system`, then the corresponding
+`flux resume kustomization apps -n flux-system`.
+Suspending a Kustomization does not stop existing HelmReleases or workloads.
+Parent GitOps reconciliation may overwrite manual suspension; declare
+`spec.suspend: true` in Git if the pause must persist, and remove it to resume.
+
+### Roll back or remove a resource
+
+- **Rollback:** revert the relevant Git commit, push, then reconcile the owning
+  Kustomization. Manual `helm rollback` is not durable under Flux management.
+- **Removal:** remove the resource from its Kustomize resources, commit and
+  push. With pruning enabled, Flux deletes it; deleting a HelmRelease triggers
+  Helm uninstall. Check persistent data retention before removing workloads.
 
 ## Migration Strategy
 
