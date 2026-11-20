@@ -164,6 +164,9 @@ Parent GitOps reconciliation may overwrite manual suspension; declare
 
 The Kubernetes dashboards expect a `node` label on kubelet/cAdvisor metrics.
 The Prometheus HelmRelease adds it through the node scrape jobs' relabel rules.
+The API-server scrape job uses `job_name: apiserver` to match that dashboard's
+selectors. Queries for older data must use the previous
+`job="kubernetes-api-servers"` label.
 Grafana's Prometheus datasource sets `timeInterval: 1m` to match Prometheus'
 scrape interval, so `$__rate_interval` uses a sufficiently long window.
 Keep these intervals aligned when changing scrape frequency.
