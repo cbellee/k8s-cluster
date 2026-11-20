@@ -160,6 +160,20 @@ Parent GitOps reconciliation may overwrite manual suspension; declare
   push. With pruning enabled, Flux deletes it; deleting a HelmRelease triggers
   Helm uninstall. Check persistent data retention before removing workloads.
 
+## Grafana dashboard metrics
+
+The Kubernetes dashboards expect a `node` label on kubelet/cAdvisor metrics.
+The Prometheus HelmRelease adds it through the node scrape jobs' relabel rules.
+Grafana's Prometheus datasource sets `timeInterval: 1m` to match Prometheus'
+scrape interval, so `$__rate_interval` uses a sufficiently long window.
+Keep these intervals aligned when changing scrape frequency.
+
+After pushing changes, reconcile `platform`, then the `prometheus` and `grafana`
+HelmReleases in `monitoring`. Allow several scrapes before refreshing dashboards.
+Persistent-volume panels can still show **No data** when the storage provider
+does not expose `kubelet_volume_stats_*` metrics, or no supported PVC is mounted
+on the selected node. Installing dashboards does not supply these metrics.
+
 ## Migration Strategy
 
 1. Keep Terraform/Ansible as day-0 provisioning.
