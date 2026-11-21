@@ -164,6 +164,10 @@ Parent GitOps reconciliation may overwrite manual suspension; declare
 
 The Kubernetes dashboards expect a `node` label on kubelet/cAdvisor metrics.
 The Prometheus HelmRelease adds it through the node scrape jobs' relabel rules.
+Prometheus self-scraping uses pod discovery restricted to this release's server
+container on port 9090, adding `pod` and `namespace` labels. The Prometheus
+dashboard's pod selector uses these labels to find matching cAdvisor CPU/memory
+metrics. This replaces the unlabeled localhost target rather than duplicating it.
 The API-server scrape job uses `job_name: apiserver` to match that dashboard's
 selectors. Queries for older data must use the previous
 `job="kubernetes-api-servers"` label.

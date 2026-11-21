@@ -30,6 +30,20 @@ spec:
               - record: coredns_forward_responses_total
                 expr: sum without (proxy_name) (coredns_proxy_request_duration_seconds_count{job="coredns", proxy_name="forward"})
     scrapeConfigs:
+      prometheus:
+        static_configs: []
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [monitoring]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_pod_label_app_kubernetes_io_component, __meta_kubernetes_pod_container_name, __meta_kubernetes_pod_container_port_number]
+            regex: prometheus;prometheus;server;prometheus-server;9090
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
       kubernetes-api-servers:
         job_name: apiserver
       kubernetes-service-endpoints:
