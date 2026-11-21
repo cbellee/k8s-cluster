@@ -169,6 +169,14 @@ selectors. Queries for older data must use the previous
 `job="kubernetes-api-servers"` label.
 CoreDNS targets in `kube-system/kube-dns` are selectively relabeled to
 `job="coredns"` for the CoreDNS dashboard; other Service scrape jobs are unchanged.
+Compatibility recording rules supply the dashboard's deprecated
+`coredns_forward_requests_total` and `coredns_forward_responses_total` from
+`coredns_proxy_request_duration_seconds_count{proxy_name="forward"}`.
+Request totals combine response codes; response totals retain `rcode`.
+These follow the [CoreDNS metric replacements](https://coredns.io/plugins/forward/#metrics)
+without modifying the downloaded dashboard. The DNS Errors panel filters
+SERVFAIL/REFUSED; if neither response code has occurred, it can legitimately
+show **No data** rather than a fabricated zero.
 Grafana's Prometheus datasource sets `timeInterval: 1m` to match Prometheus'
 scrape interval, so `$__rate_interval` uses a sufficiently long window.
 Keep these intervals aligned when changing scrape frequency.

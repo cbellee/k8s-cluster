@@ -20,6 +20,15 @@ spec:
     remediation:
       retries: 3
   values:
+    serverFiles:
+      recording_rules.yml:
+        groups:
+          - name: coredns-dashboard-compatibility
+            rules:
+              - record: coredns_forward_requests_total
+                expr: sum without (rcode, proxy_name) (coredns_proxy_request_duration_seconds_count{job="coredns", proxy_name="forward"})
+              - record: coredns_forward_responses_total
+                expr: sum without (proxy_name) (coredns_proxy_request_duration_seconds_count{job="coredns", proxy_name="forward"})
     scrapeConfigs:
       kubernetes-api-servers:
         job_name: apiserver
