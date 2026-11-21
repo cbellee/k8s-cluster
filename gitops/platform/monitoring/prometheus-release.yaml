@@ -23,6 +23,12 @@ spec:
     scrapeConfigs:
       kubernetes-api-servers:
         job_name: apiserver
+      kubernetes-service-endpoints:
+        post_relabel_configs: |
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name]
+            regex: kube-system;kube-dns
+            target_label: job
+            replacement: coredns
       kubernetes-nodes:
         post_relabel_configs: |
           - source_labels: [__meta_kubernetes_node_name]
